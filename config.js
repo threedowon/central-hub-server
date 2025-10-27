@@ -15,6 +15,12 @@ export const config = {
     port: 7000          // 언리얼 엔진의 OSC 수신 포트
   },
 
+  // 웹 UI 설정
+  web: {
+    host: "0.0.0.0",  // 웹 서버 호스트
+    port: 3000        // 웹 서버 포트
+  },
+
   // 로깅 설정
   logging: {
     level: "INFO"  // DEBUG, INFO, WARNING, ERROR

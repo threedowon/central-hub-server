@@ -7,10 +7,11 @@ import { SensorData, SensorType } from './SensorData.js';
 import { OSCSender } from './OSCSender.js';
 
 export class SensorServer {
-  constructor(host = config.udp.host, port = config.udp.port, oscSender = null) {
+  constructor(host = config.udp.host, port = config.udp.port, oscSender = null, webServer = null) {
     this.host = host;
     this.port = port;
     this.oscSender = oscSender || new OSCSender();
+    this.webServer = webServer;
     this.socket = null;
     this.running = false;
     
@@ -35,6 +36,16 @@ export class SensorServer {
       // 통계 업데이트
       this.stats[sensorData.sensorType]++;
       
+      // 웹 서버에 로그 추가
+      if (this.webServer) {
+        this.webServer.addLog({
+          type: 'success',
+          message: `Processed ${sensorData.sensorType} data (sensor_id: ${sensorData.sensorId || 'N/A'})`
+        });
+        this.webServer.broadcastSensorData(sensorData);
+        this.webServer.broadcastStats(this.stats);
+      }
+      
       // OSC로 전송
       this.oscSender.sendSensorData(sensorData);
       
@@ -44,6 +55,14 @@ export class SensorServer {
       );
     } catch (error) {
       console.error(`[Server] Error handling sensor data: ${error.message}`);
+      
+      // 웹 서버에 에러 로그 추가
+      if (this.webServer) {
+        this.webServer.addLog({
+          type: 'error',
+          message: `Error: ${error.message}`
+        });
+      }
     }
   }
 
