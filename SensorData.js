@@ -12,6 +12,8 @@ export const SensorType = {
   HUMIDITY: "humidity",
   LIGHT: "light",
   PROXIMITY: "proximity",
+  FSR: "fsr", // FSR 센서 타입 추가
+  MIC: "mic", // mic 센서 타입 추가
   UNKNOWN: "unknown"
 };
 

@@ -32,6 +32,9 @@ async function main() {
   // 센서 서버 생성
   const server = new SensorServer(config.udp.host, config.udp.port, oscSender, webServer);
   
+  // WebServer에 SensorServer 인스턴스 연결
+  webServer.setSensorServer(server);
+  
   // 시그널 핸들러 등록
   process.on('SIGINT', () => signalHandler(server, webServer, 'SIGINT'));
   process.on('SIGTERM', () => signalHandler(server, webServer, 'SIGTERM'));

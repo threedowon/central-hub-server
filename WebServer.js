@@ -4,6 +4,7 @@
 import express from 'express';
 import { createServer } from 'http';
 import { Server as SocketIOServer } from 'socket.io';
+import { WebSocketServer } from 'ws'; // ws 라이브러리 추가
 import path from 'path';
 import { fileURLToPath } from 'url';
 
@@ -16,8 +17,17 @@ export class WebServer {
     this.app = express();
     this.server = null;
     this.io = null;
+    this.ws = null; // WebSocket 서버 인스턴스 추가
     this.logs = [];
     this.maxLogs = 1000; // 최대 로그 개수
+    this.sensorServer = null; // SensorServer 인스턴스 참조
+  }
+
+  /**
+   * SensorServer 인스턴스 설정
+   */
+  setSensorServer(server) {
+    this.sensorServer = server;
   }
 
   /**
@@ -41,6 +51,80 @@ export class WebServer {
         origin: "*",
         methods: ["GET", "POST"]
       }
+    });
+
+    // Arduino용 WebSocket 서버 생성
+    this.ws = new WebSocketServer({ server: this.server });
+
+    this.ws.on('connection', (ws) => {
+      console.log('[FSR] Arduino (FSR sensor) connected');
+      this.addLog({
+        type: 'info',
+        message: 'FSR sensor connected'
+      });
+
+      ws.on('message', (message) => {
+        try {
+          const messageStr = message.toString('utf-8');
+          console.log(`[FSR] Received: ${messageStr}`);
+          
+          const data = JSON.parse(messageStr);
+          
+          // FSR 센서 데이터 처리
+          if (data.clientId === 'sofa' && data.interaction === 'seat') {
+            // SensorData 형식으로 데이터 재구성
+            const sensorData = {
+              sensorType: 'fsr',
+              sensorId: data.clientId,
+              timestamp: Date.now() / 1000,
+              data: {
+                interaction: data.interaction,
+                sitting: data.value
+              }
+            };
+            
+            // SensorServer를 통해 데이터 처리
+            if (this.sensorServer) {
+              const dataBuffer = Buffer.from(JSON.stringify(sensorData));
+              this.sensorServer.handleSensorData(dataBuffer);
+            } else {
+              // SensorServer가 없는 경우 직접 로그만 남김
+              const status = data.value ? '앉음' : '일어남';
+              this.addLog({
+                type: 'success',
+                message: `[FSR] 데이터 수신: ${status} (값: ${data.value})`
+              });
+            }
+          } else {
+            this.addLog({
+              type: 'warning',
+              message: `[FSR] Received unknown data: ${messageStr}`
+            });
+          }
+        } catch (error) {
+          console.error(`[FSR] Error processing message: ${error.message}`);
+          this.addLog({
+            type: 'error',
+            message: `[FSR] Error: ${error.message}`
+          });
+        }
+      });
+
+      ws.on('close', () => {
+        console.log('[FSR] Arduino (FSR sensor) disconnected');
+        this.addLog({
+          type: 'info',
+          message: 'FSR sensor disconnected'
+        });
+      });
+
+      ws.on('error', (error) => {
+        console.error(`[FSR] WebSocket error: ${error.message}`);
+        this.addLog({
+          type: 'error',
+          message: `[FSR] WebSocket error: ${error.message}`
+        });
+      });
     });
 
     // Socket.IO 연결 처리
@@ -124,6 +208,10 @@ export class WebServer {
    * 서버 중지
    */
   stop() {
+    if (this.ws) {
+      this.ws.close();
+      console.log('[FSR] FSR WebSocket server stopped');
+    }
     if (this.server) {
       this.server.close();
       console.log('[Web] Web server stopped');

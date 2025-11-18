@@ -35,6 +35,8 @@ export const config = {
     temperature: "/sensor/temp",
     humidity: "/sensor/humidity",
     light: "/sensor/light",
-    proximity: "/sensor/proximity"
+    proximity: "/sensor/proximity",
+    fsr: "/sensor/fsr",
+    mic: "/sensor/mic" // mic 센서 OSC 주소 추가
   }
 };

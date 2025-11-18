@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Webcam Desktop</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <video id="webcam-bg" autoplay playsinline muted></video>
+    <div id="desktop">
+        <!-- 아이콘들이 여기에 추가될 것입니다 -->
+    </div>
+
+    <div id="taskbar">
+        <div class="taskbar-left">
+            <span><img src="icons/3dowon.png" class="taskbar-logo"> 3DOWON</span>
+            <span>Info</span>
+        </div>
+        <div class="taskbar-center">
+            <div class="eye">
+                <div class="pupil"></div>
+            </div>
+            <div class="eye">
+                <div class="pupil"></div>
+            </div>
+        </div>
+        <div class="taskbar-right">
+            <span id="clock"></span>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
