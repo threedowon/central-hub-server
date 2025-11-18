@@ -5,9 +5,24 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Webcam Desktop</title>
     <link rel="stylesheet" href="style.css">
+
+    <!-- MediaPipe Hands & utilities (브라우저용 CDN) -->
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js"></script>
 </head>
 <body>
-    <video id="webcam-bg" autoplay playsinline muted></video>
+    <!-- 배경 영상(파이썬 스트리밍)을 표시할 캔버스 -->
+    <canvas id="webcam-bg"></canvas>
+
+    <!-- BG 세션 진행 상황 표시 (원형 프로그레스 바) -->
+    <div id="bg-session-overlay" class="hidden">
+        <svg viewBox="0 0 100 100">
+            <circle class="bg-ring-bg" cx="50" cy="50" r="45" />
+            <circle id="bg-progress-ring" class="bg-ring-fg" cx="50" cy="50" r="45" />
+            <text id="bg-progress-text" x="50" y="54">60</text>
+        </svg>
+    </div>
     <div id="desktop">
         <!-- 아이콘들이 여기에 추가될 것입니다 -->
     </div>

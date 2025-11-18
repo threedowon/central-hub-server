@@ -2,15 +2,20 @@ const { app, BrowserWindow, ipcMain, globalShortcut } = require('electron');
 const path = require('path');
 const { spawn, exec } = require('child_process');
 
+let mainWindow;               // renderer에 메시지를 보내기 위한 전역 참조
+let bgServerProcess = null;   // Python 스트리밍 서버 프로세스
+let kayaProcess = null;       // 외부 .exe 프로세스
+const KAYA_EXE_PATH = 'F:\\\\UprisingFesta\\\\UE5\\\\BuildTest\\\\Kaya\\\\Windows\\\\kaya.exe';
+
 function createWindow() {
     // 브라우저 창을 생성합니다.
-    const mainWindow = new BrowserWindow({
+    mainWindow = new BrowserWindow({
         width: 1280,
         height: 800,
         frame: false, // 창 프레임 제거
         webPreferences: {
             preload: path.join(__dirname, 'preload.js'),
-            // renderer process에서 Node.js API를 사용할 수 있도록 설정
+            // renderer process에서 Node.js API를 직접 사용할 수 있도록 설정
             nodeIntegration: true,
             contextIsolation: false
         }
@@ -38,7 +43,42 @@ ipcMain.on('run-script', (event, scriptName) => {
 
     pythonProcess.on('close', (code) => {
         console.log(`child process exited with code ${code}`);
+        // 파이썬 스크립트가 끝나면 웹캠을 다시 켜도록 렌더러에 알림
+        if (mainWindow && !mainWindow.isDestroyed()) {
+            mainWindow.webContents.send('restart-webcam');
+        }
     });
+});
+
+// BG 세션 제어 (kaya.exe 실행/종료)
+ipcMain.on('bg-session-start', () => {
+    if (kayaProcess) return; // 이미 실행 중이면 무시
+    console.log('Starting kaya.exe...');
+    kayaProcess = spawn(KAYA_EXE_PATH, [], { detached: false });
+
+    kayaProcess.stdout && kayaProcess.stdout.on('data', (data) => {
+        console.log(`kaya stdout: ${data}`);
+    });
+    kayaProcess.stderr && kayaProcess.stderr.on('data', (data) => {
+        console.error(`kaya stderr: ${data}`);
+    });
+
+    kayaProcess.on('close', (code) => {
+        console.log(`kaya.exe exited with code ${code}`);
+        kayaProcess = null;
+        // 렌더러에 세션 종료 알림
+        if (mainWindow && !mainWindow.isDestroyed()) {
+            mainWindow.webContents.send('bg-session-ended');
+        }
+    });
+});
+
+ipcMain.on('bg-session-stop', () => {
+    if (kayaProcess) {
+        console.log('Stopping kaya.exe...');
+        kayaProcess.kill();
+        kayaProcess = null;
+    }
 });
 
 // 휴지통 열기 리스너
@@ -54,6 +94,22 @@ ipcMain.on('open-recycle-bin', () => {
 
 // Electron이 준비되면 앱 창을 생성합니다.
 app.whenReady().then(() => {
+    // 1) 파이썬 배경 치환 스트리밍 서버 실행
+    const serverScript = path.join(__dirname, 'bg_stream_server.py');
+    bgServerProcess = spawn('python', [serverScript]);
+
+    bgServerProcess.stdout.on('data', (data) => {
+        console.log(`bg_server stdout: ${data}`);
+    });
+
+    bgServerProcess.stderr.on('data', (data) => {
+        console.error(`bg_server stderr: ${data}`);
+    });
+
+    bgServerProcess.on('close', (code) => {
+        console.log(`bg_stream_server exited with code ${code}`);
+    });
+
     createWindow();
 
     // 'Shift+Q' 전역 단축키 등록
@@ -67,8 +123,16 @@ app.whenReady().then(() => {
     });
 });
 
-// 앱이 종료되기 전에 단축키 해제
+// 앱이 종료되기 전에 단축키 해제 및 파이썬 서버 종료
 app.on('will-quit', () => {
+    if (bgServerProcess) {
+        bgServerProcess.kill();
+        bgServerProcess = null;
+    }
+    if (kayaProcess) {
+        kayaProcess.kill();
+        kayaProcess = null;
+    }
     globalShortcut.unregisterAll();
 });
 

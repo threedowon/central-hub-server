@@ -1,14 +1,7 @@
 // preload.js
 
 // 모든 Node.js API는 preload 프로세스에서 사용할 수 있습니다.
-// 웹 페이지와 동일한 샌드박스를 가집니다.
+// (현재 renderer에서 직접 Node API를 사용하므로, 여기서는 별도 노출 없음)
 window.addEventListener('DOMContentLoaded', () => {
-    const replaceText = (selector, text) => {
-        const element = document.getElementById(selector);
-        if (element) element.innerText = text;
-    };
-
-    for (const dependency of ['chrome', 'node', 'electron']) {
-        replaceText(`${dependency}-version`, process.versions[dependency]);
-    }
+    // 필요한 경우 나중에 preload 로직을 추가할 수 있습니다.
 });

@@ -6,15 +6,11 @@ body {
 
 #webcam-bg {
     position: fixed;
-    top: 50%;
-    left: 50%;
-    min-width: 100%;
-    min-height: 100%;
-    width: auto;
-    height: auto;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
     z-index: -100;
-    transform: translateX(-50%) translateY(-50%);
-    background-size: cover;
 }
 
 #desktop {
@@ -123,4 +119,50 @@ body {
     height: 18px; /* 아이콘 높이 */
     vertical-align: middle; /* 텍스트와 세로 중앙 정렬 */
     margin-right: 8px; /* 텍스트와의 간격 */
+}
+
+/* BG 세션 프로그레스 바 */
+#bg-session-overlay {
+    position: fixed;
+    top: 50px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 80px;
+    height: 80px;
+    z-index: 50;
+    display: none;
+}
+
+#bg-session-overlay.visible {
+    display: block;
+}
+
+#bg-session-overlay svg {
+    width: 100%;
+    height: 100%;
+}
+
+.bg-ring-bg {
+    fill: none;
+    stroke: rgba(0, 0, 0, 0.5);
+    stroke-width: 8;
+}
+
+.bg-ring-fg {
+    fill: none;
+    stroke: #ffffff;
+    stroke-width: 6;
+    stroke-linecap: round;
+    transform: rotate(-90deg);
+    transform-origin: 50% 50%;
+    stroke-dasharray: 283; /* 대략 2πr (r=45) */
+    stroke-dashoffset: 0;
+}
+
+#bg-progress-text {
+    font-family: 'Segoe UI', sans-serif;
+    font-size: 20px;
+    fill: #ffffff;
+    text-anchor: middle;
+    dominant-baseline: middle;
 }

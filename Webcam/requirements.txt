@@ -1,3 +1,7 @@
 pyserial
 qrcode
 Pillow
+opencv-python
+mediapipe
+numpy
+websockets
