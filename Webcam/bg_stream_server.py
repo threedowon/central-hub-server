@@ -5,17 +5,27 @@ import cv2
 import mediapipe as mp
 import numpy as np
 import websockets
+import json
 
 
 async def video_stream(websocket, mode_state):
     """
     웹캠에서 프레임을 읽어서 현재 모드에 따라
-    - plain: 원본 웹캠
+    - plain: 원본 웹캠 (+ 손 랜드마크)
     - bg   : 배경 치환된 영상
     을 JPEG 바이너리로 전송합니다.
+    plain 모드일 때는 손 랜드마크를 JSON으로 추가 전송합니다.
     """
     mp_selfie = mp.solutions.selfie_segmentation
     segment = mp_selfie.SelfieSegmentation(model_selection=1)
+
+    mp_hands = mp.solutions.hands
+    hands = mp_hands.Hands(
+        static_image_mode=False,
+        max_num_hands=2,
+        min_detection_confidence=0.6,
+        min_tracking_confidence=0.6,
+    )
 
     base_dir = os.path.dirname(__file__)
     bg_root = os.path.join(base_dir, "background.jpg")
@@ -42,6 +52,8 @@ async def video_stream(websocket, mode_state):
 
     if bg is not None:
         bg = cv2.resize(bg, (w, h))
+        # 배경 이미지도 웹캠과 동일하게 좌우 반전
+        bg = cv2.flip(bg, 1)
 
     try:
         while True:
@@ -49,9 +61,28 @@ async def video_stream(websocket, mode_state):
             if not ret:
                 break
 
+            # 좌우 반전 (거울 효과)
+            frame = cv2.flip(frame, 1)
+
             mode = mode_state["mode"]
 
+            hands_meta = []  # 각 손마다 21개 랜드마크 (정규화 좌표)
+
             if mode == "plain":
+                # 손 랜드마크 전체 추출 (사각형 GUI 계산용)
+                rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+                hand_results = hands.process(rgb)
+                if hand_results.multi_hand_landmarks:
+                    for lm in hand_results.multi_hand_landmarks:
+                        # frame 자체가 이미 좌우 반전된 상태이므로,
+                        # MediaPipe가 주는 좌표(pt.x, pt.y)를 그대로 쓰면
+                        # 캔버스 위에서도 올바른 위치에 박스가 그려집니다.
+                        points = [
+                            {"x": float(pt.x), "y": float(pt.y)}
+                            for pt in lm.landmark
+                        ]
+                        hands_meta.append(points)
+
                 output = frame
             else:  # "bg" 모드 - 배경 치환
                 rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
@@ -87,6 +118,10 @@ async def video_stream(websocket, mode_state):
 
             try:
                 await websocket.send(buffer.tobytes())
+                # plain 모드에서 손 데이터가 있으면 JSON으로 추가 전송
+                if mode == "plain" and hands_meta:
+                    meta = json.dumps({"type": "hands", "hands": hands_meta})
+                    await websocket.send(meta)
             except websockets.ConnectionClosed:
                 break
 

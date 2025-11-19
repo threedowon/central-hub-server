@@ -2,6 +2,7 @@
  * 센서 데이터 수신 및 OSC 전송 서버
  */
 import dgram from 'dgram';
+import { spawn } from 'child_process';
 import { config } from './config.js';
 import { SensorData, SensorType } from './SensorData.js';
 import { OSCSender } from './OSCSender.js';
@@ -12,120 +13,171 @@ export class SensorServer {
     this.port = port;
     this.oscSender = oscSender || new OSCSender();
     this.webServer = webServer;
+
     this.socket = null;
     this.running = false;
-    
-    // 센서별 데이터 카운터
+
+    // BSOD 프로그램
+    this.bsodProcess = null;
+
+    // 소파
+    this.sofaSitting = false;
+    this.sofaProgress = 0;
+    this.sofaProgressInterval = null;
+
+    // false 유지 감지
+    this.lastFalseTimestamp = Date.now();
+
+    // 통계
     this.stats = {};
-    for (const type in SensorType) {
-      this.stats[SensorType[type]] = 0;
-    }
+    for (const type in SensorType) this.stats[SensorType[type]] = 0;
   }
 
-  /**
-   * 센서 데이터 처리
-   */
-  handleSensorData(data) {
+  // -------------------------------
+  // 메인 센서 데이터 처리
+  // -------------------------------
+  handleSensorData(buf) {
     try {
-      // JSON 디코딩
-      const jsonStr = data.toString('utf-8');
-      
-      // SensorData 객체로 변환
+      const jsonStr = buf.toString();
       const sensorData = SensorData.fromJSON(jsonStr);
-      
-      // 통계 업데이트
-      this.stats[sensorData.sensorType]++;
-      
-      // 웹 서버에 로그 추가
-      if (this.webServer) {
-        this.webServer.addLog({
-          type: 'success',
-          message: `Processed ${sensorData.sensorType} data (sensor_id: ${sensorData.sensorId || 'N/A'})`
-        });
-        this.webServer.broadcastSensorData(sensorData);
-        this.webServer.broadcastStats(this.stats);
+
+      if (sensorData.sensorType === SensorType.FSR && sensorData.sensorId === "sofa") {
+        const sit = sensorData.data.sitting;
+        this.handleSofaState(sit);
       }
-      
-      // OSC로 전송
-      this.oscSender.sendSensorData(sensorData);
-      
-      console.log(
-        `[Server] Processed ${sensorData.sensorType} data ` +
-        `(sensor_id: ${sensorData.sensorId || 'N/A'})`
-      );
-    } catch (error) {
-      console.error(`[Server] Error handling sensor data: ${error.message}`);
-      
-      // 웹 서버에 에러 로그 추가
-      if (this.webServer) {
-        this.webServer.addLog({
-          type: 'error',
-          message: `Error: ${error.message}`
-        });
-      }
+
+      this.processAndBroadcastData(sensorData);
+
+    } catch (err) {
+      console.error("[Server] JSON Error:", err.message);
     }
   }
 
-  /**
-   * UDP 소켓 생성 및 데이터 수신 시작
-   */
+  // -------------------------------
+  // 공통 처리
+  // -------------------------------
+  processAndBroadcastData(sensorData) {
+    this.stats[sensorData.sensorType]++;
+
+    if (this.webServer) {
+      this.webServer.broadcastSensorData(sensorData);
+      this.webServer.broadcastStats(this.stats);
+    }
+
+    this.oscSender.sendSensorData(sensorData);
+
+    console.log(`[Server] Processed ${sensorData.sensorType}`);
+  }
+
+  // -------------------------------
+  // 소파 상태 처리
+  // -------------------------------
+  handleSofaState(isSitting) {
+    const now = Date.now();
+
+    if (isSitting) {
+      this.sofaSitting = true;
+      this.lastFalseTimestamp = now;
+
+      this.startProgress();
+    }
+
+    else {
+      this.sofaSitting = false;
+      this.sofaProgress = 0;
+      this.stopProgress();
+
+      if (this.bsodProcess) this.bsodProcess.stdin.write(`0\n`);
+
+      // --- false 10초 유지 체크 ---
+      setTimeout(() => {
+        if (!this.sofaSitting && Date.now() - this.lastFalseTimestamp >= 50000) {
+          console.log("[SOFA] 10초 이상 FALSE → BSOD 재시작");
+          this.stopBsodScript();
+          this.startBsodScript();
+        }
+      }, 11000);
+    }
+  }
+
+  // -------------------------------
+  // 진행률 타이머
+  // -------------------------------
+  startProgress() {
+    if (this.sofaProgressInterval) clearInterval(this.sofaProgressInterval);
+
+    this.sofaProgress = 0;
+
+    this.sofaProgressInterval = setInterval(() => {
+      this.sofaProgress++;
+      if (this.sofaProgress >= 100) {
+        this.stopBsodScript();
+        clearInterval(this.sofaProgressInterval);
+        this.sofaProgressInterval = null;
+        return;
+      }
+
+      // Python으로 전달
+      if (this.bsodProcess) this.bsodProcess.stdin.write(`${this.sofaProgress}\n`);
+
+      // 웹으로 전달
+      const progressData = {
+        sensor_type: "sofa_progress",
+        sensor_id: "sofa_progress_bar",
+        timestamp: Date.now() / 1000,
+        progress: this.sofaProgress
+      };
+
+      this.handleSensorData(Buffer.from(JSON.stringify(progressData)));
+
+    }, 80); // 100 → 8초
+  }
+
+  stopProgress() {
+    if (this.sofaProgressInterval) {
+      clearInterval(this.sofaProgressInterval);
+      this.sofaProgressInterval = null;
+    }
+  }
+
+  // -------------------------------
+  // BSOD 스크립트
+  // -------------------------------
+  startBsodScript() {
+    console.log("[BSOD] Start");
+
+    this.bsodProcess = spawn("python", ["Webcam/bsod_invite_fullscreen.py"], { stdio: "pipe" });
+
+    this.bsodProcess.stderr.on("data", (d) => console.error("[BSOD_err]", d.toString()));
+    this.bsodProcess.on("close", () => console.log("[BSOD] closed"));
+  }
+
+  stopBsodScript() {
+    if (this.bsodProcess) {
+      this.bsodProcess.stdin.end();
+      this.bsodProcess.kill("SIGINT");
+      this.bsodProcess = null;
+      console.log("[BSOD] Stop");
+    }
+  }
+
+  // -------------------------------
+  // 서버 시작
+  // -------------------------------
   start() {
-    return new Promise((resolve) => {
-      // OSC 연결
-      this.oscSender.connect();
-      
-      // UDP 소켓 생성
-      this.socket = dgram.createSocket('udp4');
-      
-      // 데이터 수신 이벤트
-      this.socket.on('message', (msg, rinfo) => {
-        console.log(`[UDP] Received ${msg.length} bytes from ${rinfo.address}:${rinfo.port}`);
-        this.handleSensorData(msg);
-      });
-      
-      // 에러 처리
-      this.socket.on('error', (err) => {
-        console.error(`[UDP] Error: ${err.message}`);
-      });
-      
-      // 바인딩 완료
-      this.socket.on('listening', () => {
-        const address = this.socket.address();
-        console.log(`[UDP] Server listening on ${address.address}:${address.port}`);
-        this.running = true;
-        resolve();
-      });
-      
-      // UDP 소켓 바인딩
-      this.socket.bind(this.port, this.host);
-    });
+    this.startBsodScript();
+
+    this.oscSender.connect();
+
+    this.socket = dgram.createSocket("udp4");
+    this.socket.on("message", (msg) => this.handleSensorData(msg));
+    this.socket.bind(this.port, this.host);
+
+    console.log(`[UDP] Listening ${this.host}:${this.port}`);
   }
 
-  /**
-   * 서버 중지
-   */
   stop() {
-    this.running = false;
-    
-    if (this.socket) {
-      this.socket.close();
-      this.socket = null;
-    }
-    
-    this.oscSender.disconnect();
-    console.log('[Server] Server stopped');
-  }
-
-  /**
-   * 통계 출력
-   */
-  printStats() {
-    console.log('\n=== Sensor Statistics ===');
-    for (const [sensorType, count] of Object.entries(this.stats)) {
-      if (count > 0) {
-        console.log(`${sensorType}: ${count}`);
-      }
-    }
-    console.log('='.repeat(25) + '\n');
+    this.stopBsodScript();
+    if (this.socket) this.socket.close();
   }
 }

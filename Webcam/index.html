@@ -30,7 +30,7 @@
     <div id="taskbar">
         <div class="taskbar-left">
             <span><img src="icons/3dowon.png" class="taskbar-logo"> 3DOWON</span>
-            <span>Info</span>
+            <span id="info-button">Info</span>
         </div>
         <div class="taskbar-center">
             <div class="eye">
@@ -42,6 +42,73 @@
         </div>
         <div class="taskbar-right">
             <span id="clock"></span>
+        </div>
+    </div>
+
+    <!-- Laptop 안내 오버레이 -->
+    <div id="laptop-overlay" class="laptop-hidden">
+        <div class="laptop-modal">
+            <h2>노트북이 당신의 신호를 기다리는 중입니다.</h2>
+            <p>
+                끝나면 아래 버튼을 눌러 이 창을 닫을 수 있습니다.
+            </p>
+            <button id="laptop-close">확인</button>
+        </div>
+    </div>
+
+    <!-- Mouse 휠 안내 오버레이 -->
+    <div id="mouse-overlay" class="mouse-hidden">
+        <div class="mouse-modal">
+            <h2>마우스 휠을 움직여 보세요</h2>
+            <p>
+                스크롤을 위/아래로 움직일 때마다<br>
+                언리얼로 신호가 전송됩니다.
+            </p>
+            <button id="mouse-close">완료</button>
+        </div>
+    </div>
+
+    <!-- Hand 모드 안내 오버레이 -->
+    <div id="hand-overlay" class="hand-hidden">
+        <div class="hand-modal">
+            <h2>손으로 아이콘을 움직여 보세요</h2>
+            <p>
+                오른손을 화면에 비추면<br>
+                아이콘들이 손 주변으로 모여 함께 따라다닙니다.
+            </p>
+            <button id="hand-close">종료</button>
+        </div>
+    </div>
+
+    <!-- Info 말풍선 -->
+    <div id="info-tooltip" class="info-hidden">
+        <div class="info-bubble">
+            <h3>About this desktop</h3>
+            <p>
+                이 가상 데스크톱은 전시를 위해 만들어졌습니다.<br>
+                아이콘을 더블클릭해서 상호작용을 시작해 보세요.<br>
+            </p>
+        </div>
+    </div>
+
+    <!-- 방명록 오버레이 -->
+    <div id="guestbook-overlay" class="guestbook-hidden">
+        <div class="guestbook-modal">
+            <h2>Guestbook</h2>
+            <label>
+                Nickname
+                <input type="text" id="guestbook-nickname" maxlength="30" />
+            </label>
+            <label>
+                Message
+                <textarea id="guestbook-message" rows="4" maxlength="200"></textarea>
+            </label>
+            <div class="guestbook-buttons">
+                <button id="guestbook-save">Save</button>
+                <button id="guestbook-close">Close</button>
+            </div>
+            <div id="guestbook-status"></div>
+            <div id="guestbook-list"></div>
         </div>
     </div>
 

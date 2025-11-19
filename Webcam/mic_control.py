@@ -15,8 +15,9 @@ MIN_FREQ = 80
 MAX_FREQ = 450  # 800 -> 450 으로 변경하여 색상 변화를 더 민감하게 만듭니다.
 
 # --- UDP 설정 ---
-UDP_IP = "127.0.0.1"
-UDP_PORT = 5000
+# 색상 값을 전송할 대상 IP/포트 (언리얼이 수신하는 주소로 변경)
+UDP_IP = "192.168.0.101"
+UDP_PORT = 5006
 sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 
 # --- 전역 변수 ---
@@ -112,25 +113,13 @@ def countdown():
 
     # 분석이 끝났을 때 UI 업데이트 및 UDP 전송
     try:
-        # 서버의 표준 SensorData JSON 형식에 맞춰 데이터를 구성합니다.
-        payload = {
-            "sensor_type": "mic",  # 'sensorType' -> 'sensor_type' 으로 수정
-            "sensor_id": "voice_color",  # 'sensorId' -> 'sensor_id' 으로 수정
-            "timestamp": time.time(),
-            "data": {
-                "color": last_color_hex
-            }
-        }
-        
-        # 딕셔너리를 JSON 문자열로 변환합니다.
-        message = json.dumps(payload)
-
-        # JSON 문자열을 utf-8로 인코딩하여 UDP 메시지로 전송합니다.
+        # 단순 HEX 문자열("#RRGGBB") 형식으로 전송 (color_crt_display.py와 호환)
+        message = last_color_hex  # 예: "#ff00aa"
         sock.sendto(message.encode('utf-8'), (UDP_IP, UDP_PORT))
-        
+
         # 성공 메시지를 UI에 표시합니다.
-        status_label.configure(text=f"✅ 분석 완료! {UDP_IP}:{UDP_PORT}로 색상 전송")
-        
+        status_label.configure(text=f"✅ 분석 완료! {UDP_IP}:{UDP_PORT}로 색상 전송 ({message})")
+
     except Exception as e:
         # 실패 시 에러 메시지를 UI에 표시합니다.
         status_label.configure(text=f"⚠️ UDP 전송 실패: {e}", text_color="#FFA500")

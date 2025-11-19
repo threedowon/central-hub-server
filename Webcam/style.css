@@ -81,11 +81,14 @@ body {
 
 .taskbar-center {
     font-size: 20px;
-    /* Make room for the eye */
-    flex-grow: 1;
     display: flex;
     justify-content: center;
     gap: 8px; /* 눈 사이에 간격 추가 */
+
+    /* 항상 작업표시줄 중앙에 오도록 절대 위치 지정 */
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
 }
 
 .eye {
@@ -119,6 +122,329 @@ body {
     height: 18px; /* 아이콘 높이 */
     vertical-align: middle; /* 텍스트와 세로 중앙 정렬 */
     margin-right: 8px; /* 텍스트와의 간격 */
+}
+
+/* Guestbook overlay */
+#guestbook-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background: rgba(0, 0, 0, 0.6);
+    align-items: center;
+    justify-content: center;
+    z-index: 100;
+}
+
+#guestbook-overlay.guestbook-hidden {
+    display: none;
+}
+
+#guestbook-overlay:not(.guestbook-hidden) {
+    display: flex;
+}
+
+/* Info 말풍선 */
+#info-tooltip {
+    position: fixed;
+    bottom: 60px;
+    left: 20px;
+    z-index: 120;
+}
+
+#info-tooltip.info-hidden {
+    display: none;
+}
+
+.info-bubble {
+    background: rgba(15, 15, 15, 0.96);
+    color: #f5f5f5;
+    padding: 14px 18px;
+    border-radius: 14px;
+    max-width: 320px;
+    font-size: 13px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6);
+    position: relative;
+}
+
+.info-bubble h3 {
+    margin: 0 0 6px 0;
+    font-size: 14px;
+    font-weight: 600;
+}
+
+.info-bubble p {
+    margin: 0;
+    line-height: 1.5;
+}
+
+.info-bubble::after {
+    content: "";
+    position: absolute;
+    bottom: -8px;
+    left: 24px;
+    border-width: 8px 8px 0 8px;
+    border-style: solid;
+    border-color: rgba(15, 15, 15, 0.96) transparent transparent transparent;
+}
+
+/* Laptop 안내 오버레이 */
+#laptop-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background: rgba(0, 0, 0, 0.65);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 90;
+}
+
+#laptop-overlay.laptop-hidden {
+    display: none;
+}
+
+.laptop-modal {
+    background: rgba(15, 15, 15, 0.96);
+    border-radius: 16px;
+    padding: 32px 40px;
+    max-width: 420px;
+    color: #f5f5f5;
+    box-shadow: 0 16px 40px rgba(0, 0, 0, 0.6);
+    text-align: center;
+    font-family: 'Segoe UI', sans-serif;
+}
+
+.laptop-modal h2 {
+    margin: 0 0 12px 0;
+    font-size: 22px;
+}
+
+.laptop-modal p {
+    margin: 0 0 20px 0;
+    font-size: 14px;
+    line-height: 1.6;
+}
+
+.laptop-modal button {
+    padding: 8px 20px;
+    border-radius: 999px;
+    border: none;
+    background: #3b82f6;
+    color: white;
+    font-size: 14px;
+    cursor: pointer;
+}
+
+.laptop-modal button:hover {
+    background: #2563eb;
+}
+
+/* Mouse 안내 오버레이 */
+#mouse-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background: rgba(0, 0, 0, 0.65);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 90;
+}
+
+#mouse-overlay.mouse-hidden {
+    display: none;
+}
+
+.mouse-modal {
+    background: rgba(15, 15, 15, 0.96);
+    border-radius: 16px;
+    padding: 28px 36px;
+    max-width: 420px;
+    color: #f5f5f5;
+    box-shadow: 0 16px 40px rgba(0, 0, 0, 0.6);
+    text-align: center;
+    font-family: 'Segoe UI', sans-serif;
+}
+
+.mouse-modal h2 {
+    margin: 0 0 10px 0;
+    font-size: 20px;
+}
+
+.mouse-modal p {
+    margin: 0 0 18px 0;
+    font-size: 14px;
+    line-height: 1.6;
+}
+
+.mouse-modal button {
+    padding: 8px 20px;
+    border-radius: 999px;
+    border: none;
+    background: #22c55e;
+    color: white;
+    font-size: 14px;
+    cursor: pointer;
+}
+
+.mouse-modal button:hover {
+    background: #16a34a;
+}
+
+/* Hand 모드 안내 오버레이 */
+#hand-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background: rgba(0, 0, 0, 0.65);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 90;
+}
+
+#hand-overlay.hand-hidden {
+    display: none;
+}
+
+.hand-modal {
+    background: rgba(15, 15, 15, 0.96);
+    border-radius: 16px;
+    padding: 28px 36px;
+    max-width: 420px;
+    color: #f5f5f5;
+    box-shadow: 0 16px 40px rgba(0, 0, 0, 0.6);
+    text-align: center;
+    font-family: 'Segoe UI', sans-serif;
+}
+
+.hand-modal h2 {
+    margin: 0 0 10px 0;
+    font-size: 20px;
+}
+
+.hand-modal p {
+    margin: 0 0 18px 0;
+    font-size: 14px;
+    line-height: 1.6;
+}
+
+.hand-modal button {
+    padding: 8px 20px;
+    border-radius: 999px;
+    border: none;
+    background: #f97316;
+    color: white;
+    font-size: 14px;
+    cursor: pointer;
+}
+
+.hand-modal button:hover {
+    background: #ea580c;
+}
+
+.guestbook-modal {
+    background: rgba(20, 20, 20, 0.95);
+    border-radius: 12px;
+    padding: 20px 24px;
+    width: 360px;
+    color: #ffffff;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+    font-family: 'Segoe UI', sans-serif;
+}
+
+.guestbook-modal h2 {
+    margin-top: 0;
+    margin-bottom: 12px;
+    font-size: 20px;
+}
+
+.guestbook-modal label {
+    display: block;
+    font-size: 13px;
+    margin-bottom: 10px;
+}
+
+.guestbook-modal input[type="text"],
+.guestbook-modal textarea {
+    width: 100%;
+    box-sizing: border-box;
+    border-radius: 6px;
+    border: 1px solid #444;
+    background: #111;
+    color: #fff;
+    padding: 6px 8px;
+    margin-top: 4px;
+    font-size: 13px;
+}
+
+.guestbook-buttons {
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+    margin-top: 8px;
+    margin-bottom: 8px;
+}
+
+.guestbook-buttons button {
+    padding: 6px 12px;
+    border-radius: 6px;
+    border: none;
+    cursor: pointer;
+    font-size: 13px;
+}
+
+#guestbook-save {
+    background: #00b894;
+    color: #fff;
+}
+
+#guestbook-close {
+    background: #555;
+    color: #fff;
+}
+
+#guestbook-status {
+    font-size: 12px;
+    min-height: 16px;
+    color: #cccccc;
+}
+
+#guestbook-list {
+    max-height: 200px;
+    overflow-y: auto;
+    margin-top: 6px;
+    border-top: 1px solid #333;
+    padding-top: 6px;
+    font-size: 12px;
+}
+
+.guestbook-entry {
+    margin-bottom: 8px;
+    padding-bottom: 6px;
+    border-bottom: 1px dashed #333;
+}
+
+.guestbook-entry-header {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 2px;
+}
+
+.guestbook-nick {
+    font-weight: 600;
+}
+
+.guestbook-time {
+    color: #999;
 }
 
 /* BG 세션 프로그레스 바 */

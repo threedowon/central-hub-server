@@ -1,17 +1,18 @@
 const { app, BrowserWindow, ipcMain, globalShortcut } = require('electron');
 const path = require('path');
 const { spawn, exec } = require('child_process');
+const dgram = require('dgram'); // UDP 전송을 위한 모듈 추가
 
 let mainWindow;               // renderer에 메시지를 보내기 위한 전역 참조
 let bgServerProcess = null;   // Python 스트리밍 서버 프로세스
-let kayaProcess = null;       // 외부 .exe 프로세스
+let kayaProcess = null;       // BG용 kaya.exe
+let externalExeProcess = null; // 일반 .exe 프로세스 (아이콘에서 실행)
 const KAYA_EXE_PATH = 'F:\\\\UprisingFesta\\\\UE5\\\\BuildTest\\\\Kaya\\\\Windows\\\\kaya.exe';
 
 function createWindow() {
     // 브라우저 창을 생성합니다.
     mainWindow = new BrowserWindow({
-        width: 1280,
-        height: 800,
+        fullscreen: false, // 전체 화면으로 실행
         frame: false, // 창 프레임 제거
         webPreferences: {
             preload: path.join(__dirname, 'preload.js'),
@@ -48,6 +49,67 @@ ipcMain.on('run-script', (event, scriptName) => {
             mainWindow.webContents.send('restart-webcam');
         }
     });
+});
+
+// UDP 패킷 전송 리스너 (다른 노트북에 신호 보내기)
+ipcMain.on('send-udp', (event, payload) => {
+    const { host, port, message } = payload;
+    const client = dgram.createSocket('udp4');
+    const buf = Buffer.from(message ?? 'wake', 'utf8');
+
+    client.send(buf, port, host, (err) => {
+        if (err) {
+            console.error('[UDP] Send error:', err);
+        } else {
+            console.log(`[UDP] Sent "${buf.toString()}" to ${host}:${port}`);
+        }
+        client.close();
+    });
+});
+
+// 임의의 .exe 실행/종료 리스너
+ipcMain.on('exec-start', (event, exePath) => {
+    if (externalExeProcess) {
+        console.log('[EXEC] Process already running.');
+        return;
+    }
+    console.log('[EXEC] Starting exe:', exePath);
+    externalExeProcess = spawn(exePath, [], { detached: false });
+
+    externalExeProcess.stdout && externalExeProcess.stdout.on('data', (data) => {
+        console.log(`[EXEC stdout]: ${data}`);
+    });
+    externalExeProcess.stderr && externalExeProcess.stderr.on('data', (data) => {
+        console.error(`[EXEC stderr]: ${data}`);
+    });
+
+    externalExeProcess.on('close', (code) => {
+        console.log(`[EXEC] exe exited with code ${code}`);
+        externalExeProcess = null;
+    });
+});
+
+ipcMain.on('exec-stop', () => {
+    if (externalExeProcess) {
+        console.log('[EXEC] Stopping exe...');
+        // Windows의 경우 일부 exe가 SIGTERM을 무시하므로 taskkill 사용
+        if (process.platform === 'win32') {
+            try {
+                const pid = externalExeProcess.pid;
+                console.log(`[EXEC] taskkill /PID ${pid} /T /F`);
+                exec(`taskkill /PID ${pid} /T /F`, (err) => {
+                    if (err) {
+                        console.error('[EXEC] taskkill error:', err);
+                    }
+                });
+            } catch (e) {
+                console.error('[EXEC] Failed to taskkill:', e);
+            }
+        } else {
+            externalExeProcess.kill();
+        }
+        externalExeProcess = null;
+    }
 });
 
 // BG 세션 제어 (kaya.exe 실행/종료)
@@ -132,6 +194,24 @@ app.on('will-quit', () => {
     if (kayaProcess) {
         kayaProcess.kill();
         kayaProcess = null;
+    }
+    if (externalExeProcess) {
+        console.log('[EXEC] Cleaning up exe on app quit...');
+        if (process.platform === 'win32') {
+            try {
+                const pid = externalExeProcess.pid;
+                exec(`taskkill /PID ${pid} /T /F`, (err) => {
+                    if (err) {
+                        console.error('[EXEC] taskkill error (on quit):', err);
+                    }
+                });
+            } catch (e) {
+                console.error('[EXEC] Failed to taskkill on quit:', e);
+            }
+        } else {
+            externalExeProcess.kill();
+        }
+        externalExeProcess = null;
     }
     globalShortcut.unregisterAll();
 });

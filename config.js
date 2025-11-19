@@ -37,6 +37,7 @@ export const config = {
     light: "/sensor/light",
     proximity: "/sensor/proximity",
     fsr: "/sensor/fsr",
-    mic: "/sensor/mic" // mic 센서 OSC 주소 추가
+    mic: "/sensor/mic",
+    sofa_progress: "/sensor/sofa_progress" // 소파 진행률 OSC 주소 추가
   }
 };
